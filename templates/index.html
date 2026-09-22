@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Wyszukiwanie - wiele obrazów</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; max-width: 800px; }
+        .form-group { margin-bottom: 15px; }
+
+        /* Kontener na miniaturki dodanych zdjęć */
+        #thumbnails-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            min-height: 80px;
+            align-items: center;
+        }
+
+        /* Styl pojedynczej miniaturki */
+        .thumb-card {
+            width: 70px;
+            height: 70px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .thumb-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Wypełnia kwadrat bez rozciągania */
+        }
+
+        .error-message { color: red; font-size: 0.9em; display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Wyszukiwanie samochodów (wiele zdjęć)</h2>
+
+    <form id="search-form">
+        <div class="form-group">
+            <label for="images-input">Dodaj zdjęcia (max 5):</label>
+            <!-- Atrybut multiple pozwala na wybór wielu plików -->
+            <input type="file" id="images-input" accept="image/*" multiple required>
+            <p id="limit-error" class="error-message">Możesz dodać maksymalnie 5 zdjęć!</p>
+
+            <!-- Okienko na miniaturki dodanych obrazów -->
+            <div id="thumbnails-grid">
+                <span id="placeholder-text" style="color: #888;">Brak wybranych zdjęć</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="brand">Marka:</label>
+            <input type="text" id="brand" placeholder="np. Audi">
+        </div>
+
+        <button type="submit" id="search-btn">Search</button>
+    </form>
+
+    <div id="results" style="margin-top: 20px;"></div>
+
+    <script>
+        const MAX_FILES = 5;
+        const imagesInput = document.getElementById('images-input');
+        const thumbnailsGrid = document.getElementById('thumbnails-grid');
+        const placeholderText = document.getElementById('placeholder-text');
+        const limitError = document.getElementById('limit-error');
+
+        // Reagujemy na wybór plików przez użytkownika
+        imagesInput.addEventListener('change', function() {
+            const files = Array.from(this.files);
+
+            // Walidacja limitu
+            if (files.length > MAX_FILES) {
+                limitError.style.display = 'block';
+                this.value = ''; // Czyszczenie wyboru
+                thumbnailsGrid.innerHTML = '';
+                thumbnailsGrid.appendChild(placeholderText);
+                placeholderText.style.display = 'inline';
+                return;
+            }
+
+            limitError.style.display = 'none';
+            thumbnailsGrid.innerHTML = ''; // Wyczyszczenie poprzednich miniaturek
+
+            if (files.length === 0) {
+                thumbnailsGrid.appendChild(placeholderText);
+                placeholderText.style.display = 'inline';
+                return;
+            }
+
+            // Tworzenie miniaturek dla każdego pliku
+            files.forEach(file => {
+                const card = document.createElement('div');
+                card.className = 'thumb-card';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file); // Szybki podgląd w RAM przeglądarki
+                img.alt = file.name;
+
+                card.appendChild(img);
+                thumbnailsGrid.appendChild(card);
+            });
+        });
+
+        // Wysyłanie formularza
+        document.getElementById('search-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            const files = imagesInput.files;
+
+            // Dodajemy każdy plik pod tą samą nazwą klucza 'files'
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            // Dodatkowe parametry
+            formData.append('brand', document.getElementById('brand').value);
+
+            const response = await fetch('/search/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            document.getElementById('results').innerText = JSON.stringify(data, null, 2);
+        });
+    </script>
+</body>
+</html>
